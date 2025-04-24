@@ -64,7 +64,7 @@ def colormap(groups, colorscheme="viridis"):
     colormap = cm.get_cmap(colorscheme, len(unique_groups))
     return {group: colormap(i) for i, group in enumerate(unique_groups)}
 
-def nqplot(df, data_col, group_col, colors=None, x_range=None, y_range=None, x_label=None, y_label=None, fit_line=False, connect_points=True, data_on_x=True, figsize=(800, 600), title_fontsize=16, label_fontsize=14, tick_fontsize=12, legend_fontsize=12, minor_ticks=True, xscale='linear', yscale='linear', display_stats=True, save_stats=True):
+def nqplot(df, data_col, group_col, colors=None, symbol_col=None, x_range=None, y_range=None, x_label=None, y_label=None, fit_line=False, connect_points=True, data_on_x=True, figsize=(800, 600), title_fontsize=16, label_fontsize=14, tick_fontsize=12, legend_fontsize=12, minor_ticks=True, xscale='linear', yscale='linear', display_stats=True, save_stats=True, hollow=False):
     """
     Plot a normal quantile plot of the data column grouped by the group column.
 
@@ -89,12 +89,18 @@ def nqplot(df, data_col, group_col, colors=None, x_range=None, y_range=None, x_l
     xscale (str, optional): Scale for the x-axis. Options: 'linear', 'log10', 'log', 'exp'. Default is 'linear'.
     yscale (str, optional): Scale for the y-axis. Options: 'linear', 'log10', 'log', 'exp'. Default is 'linear'.
     display_stats (bool, optional): Whether to display the statistics DataFrame. Default is True.
+    hollow (bool, optional): Whether to use hollow symbols for the plot. Default is False.
     
     Returns:
     dict: A dictionary containing the Q-Q plot data and fit parameters for each group.
     """
     if colors is None:
         colors = colormap(df[group_col])
+    symbols = ["o", "s", "D", "^", "v", "<", ">"]  # List of symbols to rotate
+    symbol_map = {}  # Map unique values in symbol_col to symbols
+    if symbol_col:
+        unique_symbols = df[symbol_col].unique()
+        symbol_map = {value: symbols[i % len(symbols)] for i, value in enumerate(unique_symbols)}
 
     plt.figure(figsize=(figsize[0] / 100, figsize[1] / 100))
     qq_data = {}
@@ -112,12 +118,17 @@ def nqplot(df, data_col, group_col, colors=None, x_range=None, y_range=None, x_l
             'intercept': intercept,
             'r': r
         }
-        
+
         # Plot the sample points
-        if data_on_x:
-            plt.scatter(osr, osm, alpha=0.6, label=f'{group} data', color=colors.get(group))
-        else:
-            plt.scatter(osm, osr, alpha=0.6, label=f'{group} data', color=colors.get(group))
+        # Plot each point with its corresponding symbol
+        for _, row in group_df.iterrows():
+            symbol = symbol_map.get(row[symbol_col], "o") if symbol_col else "o"
+            marker_style = symbol
+            facecolors='none' if hollow else colors[group]
+            if data_on_x:
+                plt.scatter(row[data_col], osm[np.where(osr == row[data_col])[0][0]], alpha=0.6, color=colors[group], marker=marker_style, facecolors=facecolors)
+            else:
+                plt.scatter(osm[np.where(osr == row[data_col])[0][0]], row[data_col], alpha=0.6, color=colors[group], marker=marker_style, facecolors=facecolors)
         
         # Connect the data points piecewise if connect_points is True
         if connect_points:
@@ -189,7 +200,7 @@ def nqplot(df, data_col, group_col, colors=None, x_range=None, y_range=None, x_l
 
     return qq_data
 
-def xyplot(df, x_col, y_col, group_col, colors=None, x_range=None, y_range=None, x_label=None, y_label=None, fit_line=True, connect_points=False, figsize=(800, 600), title_fontsize=16, label_fontsize=14, tick_fontsize=12, legend_fontsize=12, minor_ticks=True, xscale='linear', yscale='linear'):
+def xyplot(df, x_col, y_col, group_col, symbol_col=None, colors=None, x_range=None, y_range=None, x_label=None, y_label=None, fit_line=True, connect_points=False, figsize=(800, 600), title_fontsize=16, label_fontsize=14, tick_fontsize=12, legend_fontsize=12, minor_ticks=True, xscale='linear', yscale='linear', hollow=False):
     """
     Parameters:
     df (pd.DataFrame): The DataFrame containing the data.
@@ -209,12 +220,18 @@ def xyplot(df, x_col, y_col, group_col, colors=None, x_range=None, y_range=None,
     tick_fontsize (int, optional): The font size for the tick labels. Default is 12.
     legend_fontsize (int, optional): The font size for the legend labels. Default is 12.
     minor_ticks (bool, optional): Whether to add minor ticks and grid lines. Default is True.
+    hollow (bool, optional): Whether to use hollow symbols for the plot. Default is False.
 
     Returns:
     dict: A dictionary containing the plot data and fit parameters for each group.
     """
     if colors is None:
         colors = colormap(df[group_col])
+    symbols = ["o", "s", "D", "^", "v"]  # List of symbols to rotate
+    symbol_map = {}  # Map unique values in symbol_col to symbols
+    if symbol_col:
+        unique_symbols = df[symbol_col].unique()
+        symbol_map = {value: symbols[i % len(symbols)] for i, value in enumerate(unique_symbols)}
 
     plt.figure(figsize=(figsize[0] / 100, figsize[1] / 100))
     plot_data = {}
@@ -230,9 +247,13 @@ def xyplot(df, x_col, y_col, group_col, colors=None, x_range=None, y_range=None,
             'y': y
         }
         
-        # Plot the sample points
-        plt.scatter(x, y, alpha=0.6, label=f'{group} data', color=colors.get(group))
-        
+        # Plot each point with its corresponding symbol
+        for _, row in group_df.iterrows():
+            symbol = symbol_map.get(row[symbol_col], "o") if symbol_col else "o"
+            marker_style = symbol
+            facecolors='none' if hollow else colors[group]
+            plt.scatter(row[x_col], row[y_col], alpha=0.6, color=colors[group], marker=marker_style, facecolors=facecolors)
+         
         # Connect the data points piecewise if connect_points is True
         if connect_points:
             plt.plot(x, y, color=colors.get(group), alpha=0.6)
@@ -316,9 +337,11 @@ def create_gui():
         x_col_var.set(columns[0])
         y_col_var.set(columns[1])
         group_col_var.set(columns[4])
+        symbol_col_var.set("")  # Reset symbol column selection
         x_col_combobox['values'] = columns
         y_col_combobox['values'] = columns
         group_col_combobox['values'] = columns
+        symbol_col_combobox['values'] = [""] + columns  # Allow empty selection
         plot_button.config(state=tk.NORMAL)
 
     def load_file():
@@ -336,9 +359,11 @@ def create_gui():
             x_col_var.set(columns[0])
             y_col_var.set(columns[1])
             group_col_var.set(columns[4])
+            symbol_col_var.set("")  # Reset symbol column selection
             x_col_combobox['values'] = columns
             y_col_combobox['values'] = columns
             group_col_combobox['values'] = columns
+            symbol_col_combobox['values'] = [""] + columns  # Allow empty selection
             plot_button.config(state=tk.NORMAL)
 
     def plot():
@@ -352,9 +377,11 @@ def create_gui():
         x_col = x_col_var.get()
         y_col = y_col_var.get()
         group_col = group_col_var.get()
+        symbol_col = symbol_col_var.get() if symbol_col_var.get() != "" else None  # Handle empty selection
         fit_line = fit_line_var.get()
         connect_points = connect_points_var.get()
         minor_ticks = minor_ticks_var.get()
+        hollow = hollow_var.get()  # Get the hollow option
         color_scheme = color_scheme_var.get()
         xscale = xscale_var.get()
         yscale = yscale_var.get()
@@ -364,9 +391,9 @@ def create_gui():
         colors = colormap(df[group_col], colorscheme=color_scheme)
 
         if plot_type == "nqplot":
-            nqplot(df, x_col, group_col, colors=colors, fit_line=fit_line, connect_points=connect_points, minor_ticks=minor_ticks, xscale=xscale, yscale=yscale, x_label=x_label, y_label=y_label)
+            nqplot(df, x_col, group_col, colors=colors, symbol_col=symbol_col, fit_line=fit_line, connect_points=connect_points, minor_ticks=minor_ticks, xscale=xscale, yscale=yscale, x_label=x_label, y_label=y_label, hollow=hollow)
         elif plot_type == "xyplot":
-            xyplot(df, x_col, y_col, group_col, colors=colors, fit_line=fit_line, connect_points=connect_points, minor_ticks=minor_ticks, xscale=xscale, yscale=yscale, x_label=x_label, y_label=y_label)
+            xyplot(df, x_col, y_col, group_col, symbol_col=symbol_col, colors=colors, fit_line=fit_line, connect_points=connect_points, minor_ticks=minor_ticks, xscale=xscale, yscale=yscale, x_label=x_label, y_label=y_label, hollow=hollow)
 
     root = tk.Tk()
     root.title("Plotting GUI")
@@ -375,9 +402,11 @@ def create_gui():
     x_col_var = tk.StringVar()
     y_col_var = tk.StringVar()
     group_col_var = tk.StringVar()
+    symbol_col_var = tk.StringVar()  # Variable for symbol column
     fit_line_var = tk.BooleanVar(value=True)
     connect_points_var = tk.BooleanVar(value=False)
     minor_ticks_var = tk.BooleanVar(value=True)
+    hollow_var = tk.BooleanVar(value=False)  # Variable for hollow option
     color_scheme_var = tk.StringVar(value="Set1")
     xscale_var = tk.StringVar(value="linear")
     yscale_var = tk.StringVar(value="linear")
@@ -404,32 +433,40 @@ def create_gui():
     group_col_combobox = ttk.Combobox(root, textvariable=group_col_var, values=[])
     group_col_combobox.grid(row=4, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Label(root, text="Color Scheme:").grid(row=5, column=0, sticky=tk.W)
-    color_scheme_combobox = ttk.Combobox(root, textvariable=color_scheme_var, values=["Set1", "Set3", "tab20", "plasma", "hsv"])
-    color_scheme_combobox.grid(row=5, column=1, columnspan=2, sticky=tk.W)
+    # Add dropdown for symbol column
+    ttk.Label(root, text="Symbol Column:").grid(row=5, column=0, sticky=tk.W)
+    symbol_col_combobox = ttk.Combobox(root, textvariable=symbol_col_var, values=[])
+    symbol_col_combobox.grid(row=5, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Label(root, text="X Scale:").grid(row=6, column=0, sticky=tk.W)
+    ttk.Label(root, text="Color Scheme:").grid(row=6, column=0, sticky=tk.W)
+    color_scheme_combobox = ttk.Combobox(root, textvariable=color_scheme_var, values=["Set1", "Set3", "tab20", "plasma", "dark2", "hsv"])
+    color_scheme_combobox.grid(row=6, column=1, columnspan=2, sticky=tk.W)
+
+    ttk.Label(root, text="X Scale:").grid(row=7, column=0, sticky=tk.W)
     xscale_combobox = ttk.Combobox(root, textvariable=xscale_var, values=["linear", "log", "exp"])
-    xscale_combobox.grid(row=6, column=1, columnspan=2, sticky=tk.W)
+    xscale_combobox.grid(row=7, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Label(root, text="Y Scale:").grid(row=7, column=0, sticky=tk.W)
+    ttk.Label(root, text="Y Scale:").grid(row=8, column=0, sticky=tk.W)
     yscale_combobox = ttk.Combobox(root, textvariable=yscale_var, values=["linear", "log", "exp"])
-    yscale_combobox.grid(row=7, column=1, columnspan=2, sticky=tk.W)
+    yscale_combobox.grid(row=8, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Label(root, text="X Axis Label:").grid(row=8, column=0, sticky=tk.W)
+    ttk.Label(root, text="X Axis Label:").grid(row=9, column=0, sticky=tk.W)
     x_label_entry = ttk.Entry(root, textvariable=x_label_var)
-    x_label_entry.grid(row=8, column=1, columnspan=2, sticky=tk.W)
+    x_label_entry.grid(row=9, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Label(root, text="Y Axis Label:").grid(row=9, column=0, sticky=tk.W)
+    ttk.Label(root, text="Y Axis Label:").grid(row=10, column=0, sticky=tk.W)
     y_label_entry = ttk.Entry(root, textvariable=y_label_var)
-    y_label_entry.grid(row=9, column=1, columnspan=2, sticky=tk.W)
+    y_label_entry.grid(row=10, column=1, columnspan=2, sticky=tk.W)
 
-    ttk.Checkbutton(root, text="Fit Line", variable=fit_line_var).grid(row=10, column=0, sticky=tk.W)
-    ttk.Checkbutton(root, text="Connect Points", variable=connect_points_var).grid(row=10, column=1, sticky=tk.W)
-    ttk.Checkbutton(root, text="Minor Ticks", variable=minor_ticks_var).grid(row=10, column=2, sticky=tk.W)
+    # Add checkbox for hollow symbols
+    ttk.Checkbutton(root, text="Hollow Symbols", variable=hollow_var).grid(row=11, column=0, sticky=tk.W)
+
+    ttk.Checkbutton(root, text="Fit Line", variable=fit_line_var).grid(row=12, column=0, sticky=tk.W)
+    ttk.Checkbutton(root, text="Connect Points", variable=connect_points_var).grid(row=12, column=1, sticky=tk.W)
+    ttk.Checkbutton(root, text="Minor Ticks", variable=minor_ticks_var).grid(row=12, column=2, sticky=tk.W)
 
     plot_button = ttk.Button(root, text="Plot", command=plot, state=tk.DISABLED)
-    plot_button.grid(row=11, column=0, columnspan=3)
+    plot_button.grid(row=13, column=0, columnspan=3)
 
     root.mainloop()
 
