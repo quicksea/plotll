@@ -141,18 +141,20 @@ def nqplot(df, data_col, group_col, colors=None, symbol_col=None, color_col=None
             'r': r
         }
 
-        # Plot the sample points
-        # Plot each point with its corresponding symbol
-        for _, row in group_df.iterrows():
-            symbol = symbol_map.get(row[symbol_col], "o") if symbol_col else "o"
-            marker_style = symbol
-            colorsel = colors[row[color_col]]
-            facecolors='none' if hollow else colorsel
-            if data_on_x:
-                plt.scatter(row[data_col], row['nq'], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
-            else:
-                plt.scatter(row['nq'], row[data_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
-        
+        # Group by unique combinations of color_col and symbol_col
+        grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
+
+        for (color_value, symbol_value), group_df in grouped:
+            # Determine the color and symbol for this group
+            colorsel = colors[color_value]
+            marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
+            facecolors = 'none' if hollow else colorsel
+
+        # Plot all points for this group in one shot
+        if data_on_x:
+            plt.scatter(group_df[data_col], group_df['nq'], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+        else:
+            plt.scatter(group_df['nq'], group_df[data_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)        
         # Connect the data points piecewise if connect_points is True
         line_color = colors.get(group)
         if line_color is None:
@@ -297,14 +299,18 @@ def xyplot(df, x_col, y_col, group_col, symbol_col=None, color_col=None, colors=
             'x': x,
             'y': y
         }
-        
-        # Plot each point with its corresponding symbol
-        for _, row in group_df.iterrows():
-            symbol = symbol_map.get(row[symbol_col], "o") if symbol_col else "o"
-            marker_style = symbol
-            colorsel = colors[row[color_col]]
-            facecolors='none' if hollow else colorsel
-            plt.scatter(row[x_col], row[y_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+        # Group by unique combinations of color_col and symbol_col
+        grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
+
+        for (color_value, symbol_value), group_df in grouped:
+            # Determine the color and symbol for this group
+            colorsel = colors[color_value]
+            marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
+            facecolors = 'none' if hollow else colorsel
+
+            # Plot all points for this group in one shot
+            plt.scatter(group_df[x_col], group_df[y_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+
         line_color = colors.get(group)
         if line_color is None:
             line_color = 'black'
