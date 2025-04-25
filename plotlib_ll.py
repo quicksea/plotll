@@ -142,19 +142,30 @@ def nqplot(df, data_col, group_col, colors=None, symbol_col=None, color_col=None
         }
 
         # Group by unique combinations of color_col and symbol_col
-        grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
-
-        for (color_value, symbol_value), group_df in grouped:
-            # Determine the color and symbol for this group
-            colorsel = colors[color_value]
-            marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
-            facecolors = 'none' if hollow else colorsel
-
-        # Plot all points for this group in one shot
-        if data_on_x:
-            plt.scatter(group_df[data_col], group_df['nq'], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+        if symbol_col:
+            grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
+            for (color_value, symbol_value), group_df2 in grouped:
+                # Determine the color and symbol for this group
+                colorsel = colors[color_value]
+                marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
+                facecolors = 'none' if hollow else colorsel
+                # Plot all points for this group in one shot
+                if data_on_x:
+                    plt.scatter(group_df2[data_col], group_df2['nq'], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+                else:
+                    plt.scatter(group_df2['nq'], group_df2[data_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)        
         else:
-            plt.scatter(group_df['nq'], group_df[data_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)        
+            # If no symbol_col, use color_col only
+            grouped = group_df.groupby(color_col)
+            for color_value, group_df2 in grouped:
+                colorsel = colors[color_value]
+                marker_style = "o"
+                facecolors = 'none' if hollow else colorsel
+                # Plot all points for this group in one shot
+                if data_on_x:
+                    plt.scatter(group_df2[data_col], group_df2['nq'], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+                else:
+                    plt.scatter(group_df2['nq'], group_df2[data_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)        
         # Connect the data points piecewise if connect_points is True
         line_color = colors.get(group)
         if line_color is None:
@@ -300,16 +311,22 @@ def xyplot(df, x_col, y_col, group_col, symbol_col=None, color_col=None, colors=
             'y': y
         }
         # Group by unique combinations of color_col and symbol_col
-        grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
-
-        for (color_value, symbol_value), group_df in grouped:
-            # Determine the color and symbol for this group
-            colorsel = colors[color_value]
-            marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
-            facecolors = 'none' if hollow else colorsel
-
-            # Plot all points for this group in one shot
-            plt.scatter(group_df[x_col], group_df[y_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+        if symbol_col:
+            grouped = group_df.groupby([color_col, symbol_col] if symbol_col else [color_col])
+            for (color_value, symbol_value), group_df2 in grouped:
+                # Determine the color and symbol for this group
+                colorsel = colors[color_value]
+                marker_style = symbol_map.get(symbol_value, "o") if symbol_col else "o"
+                facecolors = 'none' if hollow else colorsel
+                plt.scatter(group_df2[x_col], group_df2[y_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
+        else:
+            # If no symbol_col, use color_col only
+            grouped = group_df.groupby(color_col)
+            for color_value, group_df2 in grouped:
+                colorsel = colors[color_value]
+                marker_style = "o"
+                facecolors = 'none' if hollow else colorsel
+                plt.scatter(group_df2[x_col], group_df2[y_col], alpha=0.6, color=colorsel, marker=marker_style, facecolors=facecolors)
 
         line_color = colors.get(group)
         if line_color is None:
